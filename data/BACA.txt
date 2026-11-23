@@ -1,0 +1,2 @@
+Folder ini diisi otomatis oleh tools/siapkan_data_webgis.py.
+Lihat README.md langkah 2.
