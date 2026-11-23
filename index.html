@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BARA/KALTENG — WebGIS Bahaya Karhutla Kalimantan Tengah</title>
+<meta name="description" content="WebGIS pemantauan titik api dan pemodelan bahaya kebakaran hutan dan lahan Kalimantan Tengah, Agustus–Oktober 2026.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg width="28" height="28" viewBox="0 0 26 26" aria-hidden="true"><rect x="1" y="1" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 5c3 5 6 7 6 11a6 6 0 0 1-12 0c0-2 1-4 3-5 0 2 1 3 2 3 0-3-1-6 1-9z" fill="#FF4B14"/></svg>
+    <div>
+      <div class="brand-name" id="judul">BARA/KALTENG</div>
+      <div class="lbl muted" id="subjudul">WebGIS bahaya karhutla</div>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="Navigasi">
+    <button type="button" class="tab aktif" data-view="peta">01 Peta</button>
+    <button type="button" class="tab" data-view="metode">02 Metode</button>
+    <button type="button" class="tab" data-view="data">03 Data</button>
+    <button type="button" class="tab" data-view="tentang">04 Tentang</button>
+  </nav>
+  <div class="cari">
+    <label for="cari" class="lbl muted">Cari</label>
+    <input id="cari" type="search" list="daftar-kab" placeholder="nama kabupaten…" autocomplete="off">
+    <datalist id="daftar-kab"></datalist>
+  </div>
+</header>
+
+<div class="ticker" aria-hidden="true"><div class="ticker-isi lbl" id="ticker"></div></div>
+
+<main id="view-peta" class="view aktif">
+  <aside class="panel kiri" aria-label="Layer dan model">
+    <section class="blok">
+      <div class="blok-head"><h2>Layer</h2><span class="lbl muted">3 kelompok</span></div>
+      <div id="layer-list"></div>
+    </section>
+    <section class="blok gelap">
+      <div class="blok-head"><h2>Model on-the-fly</h2><span class="lbl aksen">Live</span></div>
+      <p class="mono kecil redup">Geser bobot, peta bahaya dihitung ulang di browser. Bobot dinormalisasi ke 100%.</p>
+      <p class="mono kecil peringatan" id="info-bobot" hidden></p>
+      <div id="bobot-list"></div>
+      <div class="baris-ctrl">
+        <label for="metode-kelas" class="lbl">Klasifikasi</label>
+        <select id="metode-kelas">
+          <option value="interval">Interval sama</option>
+          <option value="kuantil">Kuantil</option>
+        </select>
+      </div>
+      <div class="baris-ctrl">
+        <label for="opasitas" class="lbl">Transparansi</label>
+        <input id="opasitas" type="range" min="20" max="100" value="80">
+      </div>
+      <button type="button" class="btn-putih" id="reset-bobot">Reset ke bobot AHP</button>
+    </section>
+  </aside>
+
+  <section class="tengah" aria-label="Peta">
+    <div id="map" role="application" aria-label="Peta interaktif Kalimantan Tengah"></div>
+    <div class="timebar">
+      <button type="button" class="btn-play" id="play" aria-label="Putar animasi">▶</button>
+      <div class="tgl">
+        <span class="lbl muted">Titik api sampai</span>
+        <span class="mono besar" id="tgl-label">—</span>
+      </div>
+      <div class="slider">
+        <label for="hari" class="sr">Tanggal</label>
+        <input id="hari" type="range" min="0" max="91" value="91">
+        <div class="mono kecil muted skala-tgl" id="skala-tgl"></div>
+      </div>
+      <div class="ctrl-titik">
+        <label class="mono kecil"><input type="checkbox" id="mode-harian"> hanya hari ini</label>
+        <div class="mono kecil" id="filter-sumber"></div>
+        <label class="mono kecil">conf
+          <select id="filter-conf">
+            <option value="-1">semua</option>
+            <option value="1">nominal+</option>
+            <option value="2">tinggi</option>
+          </select>
+        </label>
+      </div>
+      <div class="jumlah">
+        <span class="lbl muted">Titik tampil</span>
+        <span class="mono besar" id="jumlah-titik">0</span>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel kanan" aria-label="Legenda dan statistik">
+    <section class="blok">
+      <h2>Legenda</h2>
+      <div id="legenda"></div>
+    </section>
+    <section class="blok">
+      <div class="blok-head"><h2>Statistik</h2><span class="lbl muted" id="stat-nama">Kalteng</span></div>
+      <div class="kotak4" id="stat-kotak"></div>
+      <div class="lbl muted sub">Sebaran kelas bahaya</div>
+      <div id="stat-kelas"></div>
+      <div class="lbl muted sub">Kabupaten paling rawan</div>
+      <ol class="peringkat mono" id="stat-peringkat"></ol>
+      <button type="button" class="link-btn mono kecil" id="pilih-prov" hidden>← kembali ke seluruh provinsi</button>
+    </section>
+    <section class="blok">
+      <div class="blok-head"><h2>Tabel resmi</h2><span class="lbl muted">QGIS · K1–K5</span></div>
+      <div id="resmi"></div>
+    </section>
+    <section class="blok">
+      <div class="blok-head"><h2>Validasi</h2><span class="lbl muted">live</span></div>
+      <p class="mono kecil muted">Kepadatan titik api (per 1.000 km²) di tiap kelas. Model baik bila naik dari kelas rendah ke tinggi.</p>
+      <div id="validasi"></div>
+      <p class="mono kecil" id="validasi-bakar"></p>
+    </section>
+    <section class="blok">
+      <h2>Unduh</h2>
+      <button type="button" class="btn-garis" id="unduh-titik">↓ Titik api terfilter · GeoJSON</button>
+      <button type="button" class="btn-garis" id="unduh-statistik">↓ Statistik kabupaten · CSV</button>
+    </section>
+  </aside>
+</main>
+
+<main id="view-metode" class="view teks" hidden>
+  <article class="artikel" id="isi-metode"></article>
+</main>
+<main id="view-data" class="view teks" hidden>
+  <article class="artikel" id="isi-data"></article>
+</main>
+<main id="view-tentang" class="view teks" hidden>
+  <article class="artikel" id="isi-tentang"></article>
+</main>
+
+<footer class="kaki mono">
+  <span>Sumber: NASA FIRMS · SiPongi+ · CHIRPS · MODIS LST · Sentinel-2/Landsat · SRTM · OpenStreetMap · peta gambut · batas administrasi BIG</span>
+  <span id="kaki-kanan">GD4103 SIG · ITB · 2026</span>
+</footer>
+
+<div class="muat" id="muat"><div class="muat-isi mono">Memuat data…</div></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
